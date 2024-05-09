@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.VoterDetailed.fetch.Entity.Voterdto;
 import com.example.VoterDetailed.fetch.Entity.Voterrequest;
+import com.example.VoterDetailed.fetch.Response.VoterResponse;
 import com.example.VoterDetailed.fetch.Response.Voterdetailedresponse;
 import com.example.VoterDetailed.fetch.Service.VoterDetailedService;
 
@@ -25,6 +27,13 @@ public class DetailedController {
 	public ResponseEntity<Voterdetailedresponse>fetchAll(@RequestBody Voterrequest dto) throws JsonProcessingException
 	{
 		Voterdetailedresponse response=detailedService.getfetchAll(dto);
+		return new ResponseEntity<>(response,HttpStatus.OK);
+	}
+	
+	@PostMapping("api/voterid/fetch")
+	public ResponseEntity<VoterResponse>fetchdetails(@RequestBody Voterdto dto) throws JsonProcessingException
+	{
+		VoterResponse response=detailedService.getfetchdetails(dto);
 		return new ResponseEntity<>(response,HttpStatus.OK);
 	}
 }

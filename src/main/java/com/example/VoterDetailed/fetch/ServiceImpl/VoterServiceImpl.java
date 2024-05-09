@@ -10,9 +10,12 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.VoterDetailed.fetch.Entity.Voterdto;
 import com.example.VoterDetailed.fetch.Entity.Voterrequest;
+import com.example.VoterDetailed.fetch.Response.VoterResponse;
 import com.example.VoterDetailed.fetch.Response.Voterdetailedresponse;
 import com.example.VoterDetailed.fetch.Service.VoterDetailedService;
+
 import com.example.VoterDetailed.fetch.Utils.PropertiesConfig;
 
 @Service
@@ -50,6 +53,26 @@ public class VoterServiceImpl implements VoterDetailedService {
 		Voterdetailedresponse response = restTemplate.postForObject(APIURL, request, Voterdetailedresponse.class);
         logger.info(response+"");;
 		return response;
+	}
+
+	@Override
+	public VoterResponse getfetchdetails(Voterdto dto) {
+		
+
+		String APIURL = config.getSearchApiURl();
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.set("Authorization", apiKey); // Include API key directly without "Bearer" prefix
+		String requestBody = "{\"epicNumber\": \"" + dto.getEpicNumber() + "\", \"name\": \"" + dto.getName() + "\"}";
+
+		HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+		System.out.println("Requestbody  " + requestBody);
+		VoterResponse response1 = restTemplate.postForObject(APIURL, request, VoterResponse.class);
+
+		return response1;
+	
 	}
 
 }

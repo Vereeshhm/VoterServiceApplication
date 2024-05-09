@@ -20,5 +20,14 @@ public class PropertiesConfig {
 		VoterApiURl = voterApiURl;
 	}
 	
-	
+	@Value("${Search.ApiURl}")                      
+	private String SearchApiURl;
+
+	public String getSearchApiURl() {
+		return SearchApiURl;
+	}
+
+	public void setSearchApiURl(String searchApiURl) {
+		SearchApiURl = searchApiURl;
+	}
 }
