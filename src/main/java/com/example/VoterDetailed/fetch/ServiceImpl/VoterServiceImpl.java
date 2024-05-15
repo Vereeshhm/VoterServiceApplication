@@ -8,15 +8,24 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.VoterDetailed.fetch.Entity.Voterdto;
 import com.example.VoterDetailed.fetch.Entity.Voterrequest;
-import com.example.VoterDetailed.fetch.Response.VoterResponse;
-import com.example.VoterDetailed.fetch.Response.Voterdetailedresponse;
+import com.example.VoterDetailed.fetch.Exception1.EmptyEpicnumberException;
+import com.example.VoterDetailed.fetch.Exception1.EpicnumberNotfoundException;
+import com.example.VoterDetailed.fetch.Exception1.InvalidEpicException;
 import com.example.VoterDetailed.fetch.Service.VoterDetailedService;
 
 import com.example.VoterDetailed.fetch.Utils.PropertiesConfig;
+import com.example.VoterDetailed.fetch.exception.EmptyEpicNumberException;
+import com.example.VoterDetailed.fetch.exception.EpicNumberNotFoundException;
+import com.example.VoterDetailed.fetch.exception.InvalidGetAdditionalDataException;
+
+
+
+
 
 @Service
 public class VoterServiceImpl implements VoterDetailedService {
@@ -37,7 +46,7 @@ public class VoterServiceImpl implements VoterDetailedService {
 	}
 
 	@Override
-	public Voterdetailedresponse getfetchAll(Voterrequest dto) {
+	public Object getfetchAll(Voterrequest dto) {
 
 		String APIURL = config.getVoterApiURl();
 
@@ -50,13 +59,35 @@ public class VoterServiceImpl implements VoterDetailedService {
 		HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
 
 		System.out.println("Requestbody  " + requestBody);
-		Voterdetailedresponse response = restTemplate.postForObject(APIURL, request, Voterdetailedresponse.class);
-        logger.info(response+"");;
-		return response;
+
+		try {
+            Object response = restTemplate.postForObject(APIURL, request, Object.class);
+            return response;
+        } catch (HttpClientErrorException.NotFound e) {
+            String errorMessage = e.getResponseBodyAsString();
+            logger.error("Error Response: {}", errorMessage);
+            if (errorMessage.contains("epicNumber is not found")) {
+                throw new EpicNumberNotFoundException("epicNumber is not found");
+            } else {
+                throw e;
+            }
+        }
+		catch (HttpClientErrorException.BadRequest e) {
+		    String errorMessage = e.getResponseBodyAsString();
+		    logger.error("Error Response: {}", errorMessage);
+		    if (errorMessage.contains("epicNumber is not allowed to be empty string")) {
+		        throw new EmptyEpicNumberException("epicNumber is not allowed to be empty string");
+		    } else if (errorMessage.contains("getAdditionalData can only  be 'true' or 'false'")||dto.getGetAdditionalData().matches("[a-zA-Z]+")) {
+				throw new InvalidGetAdditionalDataException("getAdditionalData can only  be 'true' or 'false'");
+			} else {
+				throw e;
+			}
+		}
+		
 	}
 
 	@Override
-	public VoterResponse getfetchdetails(Voterdto dto) {
+	public Object getfetchdetails(Voterdto dto) {
 		
 
 		String APIURL = config.getSearchApiURl();
@@ -69,9 +100,34 @@ public class VoterServiceImpl implements VoterDetailedService {
 		HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
 
 		System.out.println("Requestbody  " + requestBody);
-		VoterResponse response1 = restTemplate.postForObject(APIURL, request, VoterResponse.class);
-
-		return response1;
+//		Object response1 = restTemplate.postForObject(APIURL, request, Object.class);
+//
+//		return response1;
+		try {
+            Object response = restTemplate.postForObject(APIURL, request, Object.class);
+            return response;
+        } catch (HttpClientErrorException.BadRequest e) {
+            String errorMessage = e.getResponseBodyAsString();
+            logger.error("Error Response: {}", errorMessage);
+            if (errorMessage.contains("\\\"epicNumber\\\" is not allowed to be empty")) {
+                throw new EmptyEpicnumberException("\\\"epicNumber\\\" is not allowed to be empty");
+            } else if(errorMessage.contains("epicNumber is not valid")){
+            	
+            	 throw new InvalidEpicException("epicNumber is not valid");
+            }else {
+                throw e;
+            }
+        }
+		catch(HttpClientErrorException.NotFound e)
+		{
+			String errorMessage=e.getResponseBodyAsString();
+			logger.error("Error Response: {}", errorMessage);
+			if(errorMessage.contains("")) {
+				throw new EpicnumberNotfoundException("Epic number not found");
+			}else {
+				throw e;
+			}
+		}
 	
 	}
 
