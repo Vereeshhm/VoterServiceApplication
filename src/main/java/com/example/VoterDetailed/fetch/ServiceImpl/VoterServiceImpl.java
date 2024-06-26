@@ -14,18 +14,12 @@ import org.springframework.web.client.RestTemplate;
 
 import com.example.VoterDetailed.fetch.Entity.Voterdto;
 import com.example.VoterDetailed.fetch.Entity.Voterrequest;
-import com.example.VoterDetailed.fetch.Exception1.EmptyEpicnumberException;
-import com.example.VoterDetailed.fetch.Exception1.EpicnumberNotfoundException;
-import com.example.VoterDetailed.fetch.Exception1.InvalidEpicException;
 import com.example.VoterDetailed.fetch.Logentities.ApiLog;
 import com.example.VoterDetailed.fetch.Logentities.ApiLog1;
 import com.example.VoterDetailed.fetch.Repository.ApiLogRepository;
 import com.example.VoterDetailed.fetch.Repository.ApiLogRepository1;
 import com.example.VoterDetailed.fetch.Service.VoterDetailedService;
 import com.example.VoterDetailed.fetch.Utils.PropertiesConfig;
-import com.example.VoterDetailed.fetch.exception.EmptyEpicNumberException;
-import com.example.VoterDetailed.fetch.exception.EpicNumberNotFoundException;
-import com.example.VoterDetailed.fetch.exception.InvalidGetAdditionalDataException;
 import com.google.gson.Gson;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,123 +52,141 @@ public class VoterServiceImpl implements VoterDetailedService {
 	@Override
 	public String getfetchAll(Voterrequest dto, HttpServletRequest request, HttpServletResponse response) {
 
-		String APIURL = config.getVoterApiURl();
-
-		String requestUrl = request.getRequestURI().toString();
-
-		int statusCode = response.getStatus();
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("Authorization", apiKey); // Include API key directly without "Bearer" prefix
-		String requestBody = "{\"epicNumber\": \"" + dto.getEpicNumber() + "\", \"getAdditionalData\": \""
-				+ dto.getGetAdditionalData() + "\"}";
-
-		Gson gson = new Gson();
-
-		String requestBodyJson = gson.toJson(dto);
-		HttpEntity<String> request1 = new HttpEntity(requestBodyJson, headers);
-
-		System.out.println("Requestbody  " + requestBody);
-
 		ApiLog apiLog = new ApiLog();
-		apiLog.setUrl(requestUrl);
-		apiLog.setRequestBody(requestBodyJson);
-
+		String response1 = null;
 		try {
-			String response1 = restTemplate.postForObject(APIURL, request1, String.class);
+			String APIURL = config.getVoterApiURl();
+
+			String requestUrl = request.getRequestURI().toString();
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.set("Authorization", apiKey); // Include API key directly without "Bearer" prefix
+			String requestBody = "{\"epicNumber\": \"" + dto.getEpicNumber() + "\", \"getAdditionalData\": \""
+					+ dto.getGetAdditionalData() + "\"}";
+
+			Gson gson = new Gson();
+
+			String requestBodyJson = gson.toJson(dto);
+			HttpEntity<String> request1 = new HttpEntity(requestBodyJson, headers);
+
+			System.out.println("Requestbody  " + requestBody);
+
+			apiLog.setUrl(requestUrl);
+			apiLog.setRequestBody(requestBodyJson);
+
+			response1 = restTemplate.postForObject(APIURL, request1, String.class);
 			apiLog.setResponseBody(response1);
 			apiLog.setStatusCode(HttpStatus.OK.value());
 			return response1;
-		} catch (HttpClientErrorException.NotFound e) {
-			String errorMessage = e.getResponseBodyAsString();
+		} catch (HttpClientErrorException.TooManyRequests e) {
+			// Handling Too Many Requests Exception specifically
+			apiLog.setStatusCode(HttpStatus.TOO_MANY_REQUESTS.value());
 
-			apiLog.setResponseBody(errorMessage);
+			response1 = e.getResponseBodyAsString();
+			System.out.println("ResponseBody " + response1);
+			apiLog.setResponseBodyAsJson("API rate limit exceeded");
+		} catch (HttpClientErrorException.Unauthorized e) {
+			// Handling Unauthorized Exception specifically
+			apiLog.setStatusCode(HttpStatus.UNAUTHORIZED.value());
+
+			response1 = e.getResponseBodyAsString();
+			System.out.println("ResponseBody " + response1);
+			apiLog.setResponseBodyAsJson("No API key found in request");
+
+		}
+
+		catch (HttpClientErrorException e) {
 			apiLog.setStatusCode(e.getStatusCode().value());
-			logger.error("Error Response: {}", errorMessage);
-			if (errorMessage.contains("epicNumber is not found")) {
-				throw new EpicNumberNotFoundException("epicNumber is not found");
-			} else {
-				throw e;
-			}
-		} catch (HttpClientErrorException.BadRequest e) {
-			String errorMessage = e.getResponseBodyAsString();
-			apiLog.setResponseBody(errorMessage);
-			apiLog.setStatusCode(e.getStatusCode().value());
-			logger.error("Error Response: {}", errorMessage);
-			if (errorMessage.contains("epicNumber is not allowed to be empty string")) {
-				throw new EmptyEpicNumberException("epicNumber is not allowed to be empty string");
-			} else if (errorMessage.contains("getAdditionalData can only  be 'true' or 'false'")
-					|| dto.getGetAdditionalData().matches("[a-zA-Z]+")) {
-				throw new InvalidGetAdditionalDataException("getAdditionalData can only  be 'true' or 'false'");
 
-			} else {
+			response1 = e.getResponseBodyAsString();
+			System.out.println("ResponseBody " + response1);
+			apiLog.setResponseBody(response1);
+		}
 
-				throw e;
-			}
-		} finally {
+		catch (Exception e) {
+			apiLog.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+			response1 = e.getMessage();
+			apiLog.setResponseBody(response1);
+		}
+
+		finally {
 			apiLogRepository.save(apiLog);
 		}
+		return response1;
 
 	}
 
 	@Override
 	public String getfetchdetails(Voterdto dto, HttpServletRequest request, HttpServletResponse response) {
 
-		String APIURL = config.getSearchApiURl();
-
-		String requestUrl = request.getRequestURI().toString();
-
-		int statusCode = response.getStatus();
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("Authorization", apiKey); // Include API key directly without "Bearer" prefix
-		String requestBody = "{\"epicNumber\": \"" + dto.getEpicNumber() + "\", \"name\": \"" + dto.getName() + "\"}";
-
-		Gson gson = new Gson();
-
-		String requestBodyJson = gson.toJson(dto);
-
-		HttpEntity<String> request2 = new HttpEntity<>(requestBodyJson, headers);
-
-		System.out.println("Requestbody  " + requestBody);
-
+		String response2 = null;
 		ApiLog1 apiLog1 = new ApiLog1();
-		apiLog1.setUrl(requestUrl);
-		apiLog1.setRequestBody(requestBodyJson);
-
 		try {
-			String response2 = restTemplate.postForObject(APIURL, request2, String.class);
+			String APIURL = config.getSearchApiURl();
+
+			String requestUrl = request.getRequestURI().toString();
+
+			int statusCode = response.getStatus();
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.set("Authorization", apiKey); // Include API key directly without "Bearer" prefix
+			String requestBody = "{\"epicNumber\": \"" + dto.getEpicNumber() + "\", \"name\": \"" + dto.getName()
+					+ "\"}";
+
+			Gson gson = new Gson();
+
+			String requestBodyJson = gson.toJson(dto);
+
+			HttpEntity<String> request2 = new HttpEntity<>(requestBodyJson, headers);
+
+			System.out.println("Requestbody  " + requestBody);
+
+			apiLog1.setUrl(requestUrl);
+			apiLog1.setRequestBody(requestBodyJson);
+
+			response2 = restTemplate.postForObject(APIURL, request2, String.class);
 			apiLog1.setResponseBody(response2);
 			apiLog1.setStatusCode(HttpStatus.OK.value());
 			return response2;
-		} catch (HttpClientErrorException.BadRequest e) {
-			String errorMessage = e.getResponseBodyAsString();
-			apiLog1.setResponseBody(errorMessage);
-			apiLog1.setStatusCode(e.getStatusCode().value());
-			logger.error("Error Response: {}", errorMessage);
-			if (errorMessage.contains("\\\"epicNumber\\\" is not allowed to be empty")) {
-				throw new EmptyEpicnumberException("\\\"epicNumber\\\" is not allowed to be empty");
-			} else if (errorMessage.contains("epicNumber is not valid")) {
+		} catch (HttpClientErrorException.TooManyRequests e) {
+			// Handling Too Many Requests Exception specifically
+			apiLog1.setStatusCode(HttpStatus.TOO_MANY_REQUESTS.value());
 
-				throw new InvalidEpicException("epicNumber is not valid");
-			} else {
-				throw e;
-			}
-		} catch (HttpClientErrorException.NotFound e) {
-			String errorMessage = e.getResponseBodyAsString();
-			apiLog1.setResponseBody(errorMessage);
+			response2 = e.getResponseBodyAsString();
+			System.out.println("ResponseBody " + response2);
+			apiLog1.setResponseBodyAsJson("API rate limit exceeded");
+		} catch (HttpClientErrorException.Unauthorized e) {
+			// Handling Unauthorized Exception specifically
+			apiLog1.setStatusCode(HttpStatus.UNAUTHORIZED.value());
+
+			response2 = e.getResponseBodyAsString();
+			System.out.println("ResponseBody " + response2);
+			apiLog1.setResponseBodyAsJson("No API key found in request");
+
+		}
+
+		catch (HttpClientErrorException e) {
 			apiLog1.setStatusCode(e.getStatusCode().value());
-			logger.error("Error Response: {}", errorMessage);
-			if (errorMessage.contains("")) {
-				throw new EpicnumberNotfoundException("Epic number not found");
-			} else {
-				throw e;
-			}
-		} finally {
+
+			response2 = e.getResponseBodyAsString();
+			System.out.println("ResponseBody " + response2);
+			apiLog1.setResponseBody(response2);
+		}
+
+		catch (Exception e) {
+			apiLog1.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+			response2 = e.getMessage();
+			apiLog1.setResponseBody(response2);
+		}
+
+		finally {
 			apiLogRepository1.save(apiLog1);
 		}
+		return response2;
 
 	}
 

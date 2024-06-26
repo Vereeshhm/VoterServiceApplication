@@ -1,6 +1,7 @@
 package com.example.VoterDetailed.fetch.Logentities;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 import org.hibernate.annotations.Type;
 
@@ -73,5 +74,10 @@ public class ApiLog1 {
 		this.timestamp = timestamp;
 	}
 	
-	
+	public ApiLog1() {
+		this.timestamp=LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+	}
+	public void setResponseBodyAsJson(String message) {
+		this.responseBody = "{\"message\": \"" + message.replace("\"", "\\\"") + "\"}";
+	}
 }
